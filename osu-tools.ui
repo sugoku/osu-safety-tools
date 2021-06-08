@@ -105,6 +105,8 @@
     <property name="title">
      <string>Settings</string>
     </property>
+    <addaction name="action_manual"/>
+    <addaction name="action_osz"/>
     <addaction name="action_directory"/>
     <addaction name="action_refresh"/>
    </widget>
@@ -119,6 +121,16 @@
   <action name="action_refresh">
    <property name="text">
     <string>Refresh database cache</string>
+   </property>
+  </action>
+  <action name="action_manual">
+   <property name="text">
+    <string>Manually select .osu file...</string>
+   </property>
+  </action>
+  <action name="action_osz">
+   <property name="text">
+    <string>Manually select .osz file...</string>
    </property>
   </action>
  </widget>

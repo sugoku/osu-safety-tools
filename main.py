@@ -4,7 +4,7 @@ import json
 from dbparse import parseOsuDb
 from pathlib import Path
 
-from PyQt5.QtWidgets import QMainWindow, QDialog, QApplication
+from PyQt5.QtWidgets import QMainWindow, QDialog, QApplication, QFileDialog
 from PyQt5.QtCore import QThreadPool, QRunnable, pyqtSignal, QThread
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5 import uic
@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         self.listView.clicked.connect(self.on_beatmap_select)
         
         self.action_refresh.triggered.connect(self.update_beatmaps)
+        self.action_manual.triggered.connect(self.manual_beatmap_select)
         
         self.load_beatmaps()
         self.update_listview()
@@ -77,6 +78,12 @@ class MainWindow(QMainWindow):
         for beatmap in self.beatmaplist:
             if not len(self.lineEdit.text()) or self.lineEdit.text().lower() in beatmap.lower():
                 self.listModel.appendRow(QStandardItem(beatmap))
+                
+    def manual_beatmap_select(self):
+        self.osu_fn = Path(QFileDialog.getOpenFileName(parent=self, caption='Open file', directory=str(osu_directory), filter='*.osu')[0])
+        self.audio_fn = None
+        self.folder.setText(f"Folder: {self.osu_fn.parent}")
+        self.on_replace_audio()
         
     def on_beatmap_select(self):
         self.beatmap = self.beatmaps[int(str(self.listView.currentIndex().data()).split(':')[0])]
