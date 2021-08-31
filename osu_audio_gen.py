@@ -55,7 +55,12 @@ def generate_audio(osufn, progress=None):
         beat_length = float(timing_points[0][1])
         beats_per_measure = int(timing_points[0][2])
         
-        loop = AudioSegment.silent(duration=beat_length*beats_per_measure)
+        measure_length = beat_length*beats_per_measure
+        
+        while offset < 0:
+            offset += measure_length
+        
+        loop = AudioSegment.silent(duration=measure_length)
         
         progress.emit(10)
         
@@ -69,8 +74,20 @@ def generate_audio(osufn, progress=None):
                 loop = loop.overlay(hihat, position=beat_length*(i+1))
                 
         progress.emit(40)
-            
-        loop *= int(len(audio) / (beat_length*beats_per_measure) + 1)
+        
+        t = measure_length
+        for measure in range(int(len(audio) / (beat_length*beats_per_measure) + 1)):
+            t += measure_length
+            loop += loop
+
+            diff_ms = len(loop) - t
+            if diff_ms > 0:  # loop is longer than it should be
+                loop = loop[:-diff_ms]
+            elif diff_ms < 0:  # loop is shorter than it should be
+                loop += AudioSegment.silent(duration=diff_ms)
+                
+            # if diff_ms:
+            #     print(f"{diff_ms} detected")
         
         progress.emit(80)
             
