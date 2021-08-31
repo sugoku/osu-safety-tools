@@ -3,6 +3,9 @@ import os
 import json
 from dbparse import parseOsuDb
 from pathlib import Path
+from zipfile import ZipFile
+import tempfile
+import shutil
 
 from PyQt5.QtWidgets import QMainWindow, QDialog, QApplication, QFileDialog
 from PyQt5.QtCore import QThreadPool, QRunnable, pyqtSignal, QThread
@@ -57,6 +60,7 @@ class MainWindow(QMainWindow):
         
         self.action_refresh.triggered.connect(self.update_beatmaps)
         self.action_manual.triggered.connect(self.manual_beatmap_select)
+        self.action_osz.triggered.connect(self.osz_beatmap_select)
         
         self.load_beatmaps()
         self.update_listview()
@@ -85,6 +89,20 @@ class MainWindow(QMainWindow):
         self.folder.setText(f"Folder: {self.osu_fn.parent}")
         self.on_replace_audio()
         
+    def osz_beatmap_select(self):
+        self.osz_fn = Path(QFileDialog.getOpenFileName(parent=self, caption='Open file', directory=str(osu_directory), filter='*.osz')[0])
+        dirname = tempfile.mkdtemp()
+        self.dp = Path(dirname)
+        with ZipFile(self.osz_fn) as z:
+            z.extractall(path=self.dp)
+        l = list(self.dp.glob('*.osu'))
+        if not len(l):
+            self.folder.setText(f"Error: no .osu files found in {self.osz_fn}")
+        self.osu_fn = l[0]
+        self.audio_fn = None
+        self.folder.setText(f"Folder: {self.osu_fn.parent}")
+        self.on_replace_osz()
+            
     def on_beatmap_select(self):
         self.beatmap = self.beatmaps[int(str(self.listView.currentIndex().data()).split(':')[0])]
         song_folder = songs_folder/(self.beatmap['folder_name'])
@@ -108,11 +126,26 @@ class MainWindow(QMainWindow):
         self.thread.progress.connect(self.update_progress_bar)
         self.thread.start()
         
+    def on_replace_osz(self):
+        self.thread = AudioThread()
+        self.thread.osu_fn = self.osu_fn
+        self.thread.finished.connect(self.success_replace_osz)
+        self.thread.progress.connect(self.update_progress_bar)
+        self.thread.start()
+        
     def update_progress_bar(self, i):
         self.progressBar.setValue(i)
         
     def success_replace_audio(self):
         self.status.setText("Status: Audio replaced succesfully!")
+        
+    def success_replace_osz(self):
+        os.remove(self.osz_fn)
+        shutil.make_archive(self.osz_fn, 'zip', self.dp)
+        os.rename(self.osz_fn.with_suffix(self.osz_fn.suffix + '.zip'), self.osz_fn)
+        shutil.rmtree(self.dp)
+        
+        self.status.setText("Status: osz audio replaced succesfully!")
     
     def on_restore_audio(self):
         bak_fn = Path(str(self.audio_fn)+".bak")
