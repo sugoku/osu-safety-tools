@@ -107,6 +107,7 @@
     </property>
     <addaction name="action_manual"/>
     <addaction name="action_osz"/>
+    <addaction name="action_folder"/>
     <addaction name="action_directory"/>
     <addaction name="action_refresh"/>
    </widget>
@@ -131,6 +132,11 @@
   <action name="action_osz">
    <property name="text">
     <string>Manually select .osz file...</string>
+   </property>
+  </action>
+  <action name="action_folder">
+   <property name="text">
+    <string>Batch select folder with .osz...</string>
    </property>
   </action>
  </widget>

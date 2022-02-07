@@ -10,6 +10,7 @@ import shutil
 from PyQt5.QtWidgets import QMainWindow, QDialog, QApplication, QFileDialog
 from PyQt5.QtCore import QThreadPool, QRunnable, pyqtSignal, QThread
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtTest import QTest
 from PyQt5 import uic
 
 from osubg import generate_bg
@@ -50,6 +51,7 @@ class MainWindow(QMainWindow):
         self.beatmap = None
         self.osu_fn = None
         self.audio_fn = None
+        self.folder_fn = None
         
         self.replace_image.clicked.connect(self.on_replace_image)
         self.replace_audio.clicked.connect(self.on_replace_audio)
@@ -61,6 +63,7 @@ class MainWindow(QMainWindow):
         self.action_refresh.triggered.connect(self.update_beatmaps)
         self.action_manual.triggered.connect(self.manual_beatmap_select)
         self.action_osz.triggered.connect(self.osz_beatmap_select)
+        self.action_folder.triggered.connect(self.osz_folder_beatmap_select)
         
         self.load_beatmaps()
         self.update_listview()
@@ -85,12 +88,16 @@ class MainWindow(QMainWindow):
                 
     def manual_beatmap_select(self):
         self.osu_fn = Path(QFileDialog.getOpenFileName(parent=self, caption='Open file', directory=str(osu_directory), filter='*.osu')[0])
+        if self.osu_fn is None:
+            return
         self.audio_fn = None
         self.folder.setText(f"Folder: {self.osu_fn.parent}")
         self.on_replace_audio()
         
     def osz_beatmap_select(self):
         self.osz_fn = Path(QFileDialog.getOpenFileName(parent=self, caption='Open file', directory=str(osu_directory), filter='*.osz')[0])
+        if self.osz_fn is None:
+            return
         dirname = tempfile.mkdtemp()
         self.dp = Path(dirname)
         with ZipFile(self.osz_fn) as z:
@@ -102,6 +109,27 @@ class MainWindow(QMainWindow):
         self.audio_fn = None
         self.folder.setText(f"Folder: {self.osu_fn.parent}")
         self.on_replace_osz()
+        
+    def osz_folder_beatmap_select(self):
+        self.folder_fn = Path(QFileDialog.getExistingDirectory(parent=self, caption='Open folder', directory=str(osu_directory)))
+        if self.folder_fn is None:
+            return
+        for osz in self.folder_fn.glob('*.osz'):
+            self.osz_fn = osz
+            dirname = tempfile.mkdtemp()
+            self.dp = Path(dirname)
+            with ZipFile(self.osz_fn) as z:
+                z.extractall(path=self.dp)
+            l = list(self.dp.glob('*.osu'))
+            if not len(l):
+                self.folder.setText(f"Error: no .osu files found in {self.osz_fn}")
+                continue
+            self.osu_fn = l[0]
+            self.audio_fn = None
+            self.folder.setText(f"Folder: {self.osu_fn.parent}")
+            self.on_replace_osz()
+            while self.status.text() != "Status: osz audio replaced succesfully!":
+                QTest.qWait(1)
             
     def on_beatmap_select(self):
         self.beatmap = self.beatmaps[int(str(self.listView.currentIndex().data()).split(':')[0])]
@@ -116,10 +144,12 @@ class MainWindow(QMainWindow):
             self.status.setText("Status: The audio file has not been replaced yet (no backup found).")
             
     def on_replace_image(self):
+        self.status.setText("Status: Working...")
         generate_bg(self.osu_fn)
         self.status.setText("Status: Image replaced succesfully!")
     
     def on_replace_audio(self):
+        self.status.setText("Status: Working...")
         self.thread = AudioThread()
         self.thread.osu_fn = self.osu_fn
         self.thread.finished.connect(self.success_replace_audio)
@@ -127,6 +157,7 @@ class MainWindow(QMainWindow):
         self.thread.start()
         
     def on_replace_osz(self):
+        self.status.setText("Status: Working...")
         self.thread = AudioThread()
         self.thread.osu_fn = self.osu_fn
         self.thread.finished.connect(self.success_replace_osz)
